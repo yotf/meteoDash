@@ -1,0 +1,26 @@
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+import pandas as pd
+import numpy as np
+
+df = pd.read_csv('./skripte/results/periodi/00000DAD_KI_KI_Sljiva_2016-11-01 00:00:00.csv',usecols=[0,1],index_col="Date",names=["Date","Tavg"])
+
+app = dash.Dash()
+
+app.layout = html.Div (children = [html.H1("Hello world!"),
+                                   dcc.Graph(id="example",
+                                                 figure= {
+                                                     'data': [
+                                                         {'x' : df.index,'y':df.Tavg, 'type': 'line','name':'boats'}
+                                                         ],
+                                                      'layout': {
+                                                          'title':"Basic Dash Example"
+
+                                                          }
+                                                     })
+                                                          ])
+                                   
+if __name__ == "__main__":
+    app.run_server(debug=True)
+                                   
