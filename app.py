@@ -18,7 +18,7 @@ app.layout = html.Div (children = [html.H1("PIS podaci"),
                                                          {'x' : df.index,'y':df.Tavg, 'type': 'line','name':'Tavg'}
                                                          ],
                                                       'layout': {
-                                                          'title':"Average temperature""
+                                                          'title':"Average temperature"
 
                                                           }
                                                      })
