@@ -23,7 +23,8 @@ for fname in csv_fnames:
                       {'x' : df.index,'y':df.Tavg, 'type': 'line','name':'Tavg'}
                   ],
                   'layout': {
-                      'title':"Average temperature {}".format(fname.split("_")[0:4])
+                      'title':"Average temperature {}".format(fname.split("_")[0:4]),
+                      'yaxis':{'title': "T avg (celsius)"}
                   }
               })
     )
