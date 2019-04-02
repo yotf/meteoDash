@@ -6,7 +6,10 @@ import numpy as np
 
 df = pd.read_csv('00000DAD_KI_KI_Sljiva_2016-11-01 00:00:00.csv',usecols=[0,1],index_col="Date",names=["Date","Tavg"])
 
-app = dash.Dash()
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+server = app.server
 
 app.layout = html.Div (children = [html.H1("Hello world!"),
                                    dcc.Graph(id="example",
