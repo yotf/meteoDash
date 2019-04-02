@@ -11,14 +11,14 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 
-app.layout = html.Div (children = [html.H1("Hello world!"),
+app.layout = html.Div (children = [html.H1("PIS podaci"),
                                    dcc.Graph(id="example",
                                                  figure= {
                                                      'data': [
-                                                         {'x' : df.index,'y':df.Tavg, 'type': 'line','name':'boats'}
+                                                         {'x' : df.index,'y':df.Tavg, 'type': 'line','name':'Tavg'}
                                                          ],
                                                       'layout': {
-                                                          'title':"Basic Dash Example"
+                                                          'title':"Average temperature""
 
                                                           }
                                                      })
