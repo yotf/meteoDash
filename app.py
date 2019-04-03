@@ -34,7 +34,6 @@ max_date = pd.datetime(year=2018,month=6,day=17)
 print (min_date,max_date)
 
 for fname in csv_fnames:
-    print (fname)
 #    df = pd.read_csv(fname,names=["Date","Tavg","Tmax","Tmin","Havg","Hmin","Hmax","prec","opstina","mesto","usev"],index_col="Date")[["Tavg","opstina","mesto","usev"]]
     df = pd.read_csv(fname,usecols=[0,1],index_col="Date",converters={"Date":pd.to_datetime})
     df.columns = ["Tavg"]
@@ -46,10 +45,10 @@ for fname in csv_fnames:
                   'layout': {
                       'title':"Average temperature {}".format(fname.split("_")[0:4]),
                       'yaxis':{'title': "T avg (celsius)"},
-                      'xaxis':{'range':[min_date,max_date],'type':"date",
-                               'rangeselector':{ 'buttons':[{'count':1,'label':'1m','step':'month','stepmode':'backward'},{'count':6,'label':'6m','step':'month','stepmode':'backward'},{'step':'all'}]},
-                               'rangeslider':{'visible':True}
-                      }
+                      'xaxis':{'range':[min_date,max_date]}
+#                               'rangeselector':{ 'buttons':[{'count':1,'label':'1m','step':'month','stepmode':'backward'},{'count':6,'label':'6m','step':'month','stepmode':'backward'},{'step':'all'}]},
+#                               'rangeslider':{'visible':True}
+
                   }
               })
     )
