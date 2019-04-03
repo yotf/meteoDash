@@ -6,13 +6,30 @@ import numpy as np
 import os
 from dash.dependencies import Input, Output
 
+from plotly import tools
+import plotly.plotly as py
+import plotly.graph_objs as go
+
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 csv_fnames = [d for d in os.listdir(".") if d.startswith("00000")]
-
+csv_fnames.sort(key= lambda x: x.split("_")[3])
+print (csv_fnames)
 graph_list = []
+min_date = pd.datetime(year=2019,month=4,day=1)
+max_date = pd.datetime(year=2000,month=1,day=1)
+for fname in csv_fnames:
+    df = pd.read_csv(fname,usecols=[0,1],index_col="Date",converters={"Date":pd.to_datetime})
+    df.columns = ["Tavg"]
+    print (min_date)
+    print (df.index[0])
+    min_date = df.index[0] if df.index[0] < min_date else min_date
+    max_date = df.index[-1] if df.index[-1] > max_date else max_date
+
+print (min_date,max_date)
+
 for fname in csv_fnames:
     print (fname)
 #    df = pd.read_csv(fname,names=["Date","Tavg","Tmax","Tmin","Havg","Hmin","Hmax","prec","opstina","mesto","usev"],index_col="Date")[["Tavg","opstina","mesto","usev"]]
@@ -24,7 +41,11 @@ for fname in csv_fnames:
                   ],
                   'layout': {
                       'title':"Average temperature {}".format(fname.split("_")[0:4]),
-                      'yaxis':{'title': "T avg (celsius)"}
+                      'yaxis':{'title': "T avg (celsius)"},
+                      'xaxis':{'range':[min_date,max_date],'type':"date",
+                               'rangeselector':{ 'buttons':[{'count':1,'label':'1m','step':'month','stepmode':'backward'},{'count':6,'label':'6m','step':'month','stepmode':'backward'},{'step':'all'}]},
+                               'rangeslider':{'visible':True}
+                      }
                   }
               })
     )
