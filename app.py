@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import os
 from dash.dependencies import Input, Output
+from collections import defaultdict
 
 from plotly import tools
 import plotly.plotly as py
@@ -14,21 +15,47 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
-csv_fnames = [d for d in os.listdir(".") if d.startswith("00000")]
+csv_fnames = [d for d in os.listdir(".") if d.startswith("0000")]
 csv_fnames.sort(key= lambda x: x.split("_")[3])
 print (csv_fnames)
-graph_list = []
+graph_list = defaultdict(list)
 
-min_date = pd.datetime(year=2010,month=4,day=21)
-max_date = pd.datetime(year=2018,month=6,day=17)
+sorte = list(set([x.split("_")[3] for x in csv_fnames]))
 
-print (min_date,max_date)
 
-for fname in csv_fnames:
-#    df = pd.read_csv(fname,names=["Date","Tavg","Tmax","Tmin","Havg","Hmin","Hmax","prec","opstina","mesto","usev"],index_col="Date")[["Tavg","opstina","mesto","usev"]]
-    df = pd.read_csv(fname,usecols=[0,1],index_col="Date",converters={"Date":pd.to_datetime})
-    df.columns = ["Tavg"]
-    graph_list.append(dcc.Graph(id=fname,
+dropdown= dcc.Dropdown(id = "sorte_dropdown",
+                       options=[{'label':sorta,'value':sorta} for sorta in sorte],
+                       value=sorte[-1]
+    
+    )
+
+    
+childrenn = [html.H1("PIS podaci"),
+                                   dropdown,
+                                   html.Div(id="graphs")]
+
+app.layout = html.Div (children=childrenn)
+
+
+@app.callback(
+    Output(component_id='graphs', component_property='children'),
+    [Input(component_id='sorte_dropdown', component_property='value')]
+)
+def update_output_div(sorta):
+    min_date = None
+    max_date = None
+    graphlist =[]
+    print (sorta)
+    po_sorti = [fname for fname in csv_fnames if sorta in fname]
+    dataframes = dict()
+    for fname in po_sorti:
+        df = pd.read_csv(fname,usecols=[0,1],index_col="Date",converters={"Date":pd.to_datetime})
+        df.columns = ["Tavg"]
+        min_date = df.index[0] if not min_date else (df.index[0] if df.index[0] <min_date else min_date)
+        max_date = df.index[-1] if not max_date else (df.index[-1] if df.index[-1] > max_date else max_date)
+        dataframes[fname] =df
+    for fname,df in dataframes.items():
+        graphlist.append(dcc.Graph(id=fname,
               figure= {
                   'data': [
                       {'x' : df.index,'y':df.Tavg, 'type': 'line','name':'Tavg'}
@@ -37,27 +64,11 @@ for fname in csv_fnames:
                       'title':"Average temperature {}".format(fname.split("_")[0:4]),
                       'yaxis':{'title': "T avg (celsius)"},
                       'xaxis':{'range':[min_date,max_date]}
-#                               'rangeselector':{ 'buttons':[{'count':1,'label':'1m','step':'month','stepmode':'backward'},{'count':6,'label':'6m','step':'month','stepmode':'backward'},{'step':'all'}]},
-#                               'rangeslider':{'visible':True}
-
                   }
-              })
-    )
-
-    
-childrenn = [html.H1("PIS podaci"),
-                                   dcc.Input (id="input", value = "", type="text"),
-                                   html.Div(id="graphs",children=graph_list)]
-
-app.layout = html.Div (children=childrenn)
+              }))
+    return graphlist
 
 
-
-#@app.callback(
-#    Output(component_id="output", component_property="children"),
-#    [Input(component_id='input', component_property="value")])
-#def update_value(input_data):
-#    return "Input : {}".format(input_data)
                                    
 if __name__ == "__main__":
     app.run_server(debug=True)
