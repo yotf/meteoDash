@@ -17,7 +17,7 @@ server = app.server
 csv_fnames = [d for d in os.listdir(".") if d.startswith("0000")]
 csv_fnames.sort(key= lambda x: x.split("_")[3])
 print (csv_fnames)
-graphdict = dict()
+graphdict = defaultdict(lambda: defaultdict(list))
 
 sorte = list(set([x.split("_")[3] for x in csv_fnames]))
 
@@ -78,9 +78,12 @@ def update_output_div(sorte_list,vrednost,koje):
     max_date = None
     graphlist = []
     for sorta in sorte_list:
+        if sorta in graphdict.keys():
+            if vrednost in graphdict[sorta].keys():
+                continue
         graphlist_sorta=[]
         print (sorta)
-        po_sorti = [fname for fname in csv_fnames if sorta in fname]
+        po_sorti = [fname for fname in csv_fnames if sorta in fname and not sorta + " Ogled" in fname]
         dataframes = dict()
         for fname in po_sorti:
             df = pd.read_csv(fname,index_col="Date",converters={"Date":pd.to_datetime})
@@ -95,14 +98,15 @@ def update_output_div(sorte_list,vrednost,koje):
                       {'x' : df.index,'y':df[vrednost], 'type': 'line','name':vrednost}
                   ],
                   'layout': {
-                      'title':"Average temperature {}".format(fname.split("_")[0:4]),
-                      'yaxis':{'title': "T avg (celsius)"},
+                      'title':"{} {}".format(vrednost,fname.split("_")[0:4]),
+                      'yaxis':{'title': vrednost},
                       'xaxis':{'range':[min_date,max_date]}
                   }
               }))
 
-        graphdict[sorta]=graphlist_sorta
-        graphlist = graphlist+ graphlist_sorta
+        graphdict[sorta][vrednost]=graphlist_sorta
+    for sorta in sorte_list:
+        graphlist = graphlist + graphdict[sorta][vrednost]
     return graphlist
 
 
