@@ -62,7 +62,7 @@ dropdown_vrednosti = dcc.Dropdown(id="vrednosti_drop",
                                   )
 
     
-childrenn = [html.H1("PIS podaci"),
+childrenn = [html.H1("Observed Data from PIS sensors"),
                                    radio_ds,dropdown_vrednosti,dropdown,
                                    html.Div(id="graphs")]
 
@@ -78,9 +78,6 @@ def update_output_div(sorte_list,vrednost,koje):
     max_date = None
     graphlist = []
     for sorta in sorte_list:
-        if sorta in graphdict.keys():
-            if vrednost in graphdict[sorta].keys():
-                continue
         graphlist_sorta=[]
         print (sorta)
         po_sorti = [fname for fname in csv_fnames if sorta in fname and not sorta + " Ogled" in fname]
