@@ -124,7 +124,7 @@ def update_output_div(sorte_list,vrednost,koje):
                 df["tendq"] = Lv*df.q.diff()/(24*3600)
                 df["bowen"] = (Cp*df.Tavg.diff())/(Lv*df.q.diff())
                 df.bowen[(df.bowen>5) | (df.bowen<-2)] = None
-#                df["R1"] =
+#                df["R1"] = 
 #                df["R2"] = 
             graphlist_sorta.append(dcc.Graph(id=fname,
               figure= {
