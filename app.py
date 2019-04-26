@@ -6,6 +6,8 @@ import numpy as np
 import os
 from dash.dependencies import Input, Output, State
 from collections import defaultdict
+from timeit import default_timer as timer
+dataframes = defaultdict(dict)
 
 from plotly import tools
 import plotly.plotly as py
@@ -73,19 +75,26 @@ app.layout = html.Div (children=childrenn)
 def update_output_div(sorte_list,vrednost,koje):
     graphlist = []
     def make_graphs_for_sort(sorta):
+        def read_dataframes_for_sort(sorta):
+            dfs = dict()
+            po_sorti = [fname for fname in csv_fnames if sorta in fname and not sorta + " Ogled" in fname]
+            for fname in po_sorti:
+                df = pd.read_csv(fname,index_col="Date",converters={"Date":pd.to_datetime})
+                dfs[fname]=df
+            return dfs
         min_date = None
         max_date = None
         graphlist_sorta=[]
-        dataframes = dict()
         print (sorta)
-        po_sorti = [fname for fname in csv_fnames if sorta in fname and not sorta + " Ogled" in fname]
-        for fname in po_sorti:
-            df = pd.read_csv(fname,index_col="Date",converters={"Date":pd.to_datetime})
+        start = timer()
+        dataframes[sorta] = dataframes[sorta] if sorta in dataframes else read_dataframes_for_sort(sorta)
+        end = timer()
+        print ("proslo vremena na citanje %s" %(end-start))
+        start = timer()
+        for fname,df in dataframes[sorta].items():
             min_date = df.index[0] if not min_date else (df.index[0] if df.index[0] <min_date else min_date)
             max_date = df.index[-1] if not max_date else (df.index[-1] if df.index[-1] > max_date else max_date)
-            dataframes[fname] =df
-        for fname,df in dataframes.items():
-            df = df.resample('2H').mean() if koje=="hourly" else df.resample('D').mean()
+            df = df if koje=="hourly" else df.resample('D').mean()
             graphlist_sorta.append(dcc.Graph(id=fname,
               figure= {
                   'data': [
@@ -97,6 +106,8 @@ def update_output_div(sorte_list,vrednost,koje):
                       'xaxis':{'range':[min_date,max_date]}
                   }
               }))
+        end = timer()
+        print ("proslo vremena na crtanje %s" %(end-start))
         graphdict[sorta][vrednost][koje]=graphlist_sorta
         return graphlist_sorta
         
@@ -104,6 +115,7 @@ def update_output_div(sorte_list,vrednost,koje):
         graphlist+= graphdict[sorta][vrednost][koje] if graphdict[sorta][vrednost][koje] else make_graphs_for_sort(sorta)
 
     return graphlist
+
 
 
                                    
