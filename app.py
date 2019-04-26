@@ -44,9 +44,19 @@ dropdown_funkc = dcc.Dropdown(id="panel_dropdown",
                                          {'label':"Fenologija",'value':"fen"}]
                               )
 
-#{'label':"Bowen daily", "value" :"bowen"},
-#{'label':"Temperature Tendency daily", "value" :"tendt"},
-#{'label':"Q Tendency daily", "value" :"tendq"}
+
+
+options_hourly =  [{'label':"Average temperature",'value':"Tavg"},
+                   {'label':"Relative humidity", "value" : "RH"},
+                   {'label':"LCL", "value" :"lcl"},
+                   {'label':"q", "value" :"q"},
+                   {'label':"qsat", "value" :"qsat"},
+                   {'label':"Dew Point", "value" :"dewpoint"}]
+
+
+options_daily = options_hourly + [{'label':"Bowen daily", "value" :"bowen"},
+                                  {'label':"Temperature Tendency daily", "value" :"tendt"},
+                                  {'label':"Q Tendency daily", "value" :"tendq"}]
 
 
 dropdown_vrednosti = dcc.Dropdown(id="vrednosti_drop",
@@ -66,6 +76,16 @@ childrenn = [html.H1("Observed Data - Vojvodina"),
                                    html.Div(id="graphs")]
 
 app.layout = html.Div (children=childrenn)
+
+@app.callback(
+    Output(component_id='vrednosti_drop', component_property='options'),
+    [Input(component_id='koje', component_property='value')],[State(component_id ="vrednosti_drop",component_property="options")]
+)
+def update_vrednosti_drop(koje,options):
+    print(koje)
+    print(options)
+    assert(koje=="daily" or koje=="hourly")
+    return options_daily if koje=="daily" else options_hourly
 
 
 @app.callback(
@@ -91,10 +111,21 @@ def update_output_div(sorte_list,vrednost,koje):
         end = timer()
         print ("proslo vremena na citanje %s" %(end-start))
         start = timer()
+
         for fname,df in dataframes[sorta].items():
             min_date = df.index[0] if not min_date else (df.index[0] if df.index[0] <min_date else min_date)
             max_date = df.index[-1] if not max_date else (df.index[-1] if df.index[-1] > max_date else max_date)
+        for fname,df in dataframes[sorta].items():
             df = df if koje=="hourly" else df.resample('D').mean()
+            if koje=="hourly":
+                Lv = 2265.705
+                Cp = 1.003
+                df["tendt"] = Cp*df.Tavg.diff()/(24*3600)
+                df["tendq"] = Lv*df.q.diff()/(24*3600)
+                df["bowen"] = (Cp*df.Tavg.diff())/(Lv*df.q.diff())
+                df.bowen[(df.bowen>5) | (df.bowen<-2)] = None
+#                df["R1"] =
+#                df["R2"] = 
             graphlist_sorta.append(dcc.Graph(id=fname,
               figure= {
                   'data': [
