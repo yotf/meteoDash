@@ -117,7 +117,7 @@ def update_output_div(sorte_list,vrednost,koje):
             max_date = df.index[-1] if not max_date else (df.index[-1] if df.index[-1] > max_date else max_date)
         for fname,df in dataframes[sorta].items():
             df = df if koje=="hourly" else df.resample('D').mean()
-            if koje=="hourly":
+            if koje=="daily":
                 Lv = 2265.705
                 Cp = 1.003
                 df["tendt"] = Cp*df.Tavg.diff()/(24*3600)
