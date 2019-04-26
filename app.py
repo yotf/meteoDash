@@ -16,8 +16,7 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 csv_fnames = [d for d in os.listdir(".") if d.startswith("0000")]
 csv_fnames.sort(key= lambda x: x.split("_")[3])
-print (csv_fnames)
-graphdict = defaultdict(lambda: defaultdict(list))
+graphdict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
 sorte = list(set([x.split("_")[3] for x in csv_fnames]))
 
@@ -26,8 +25,6 @@ dropdown= dcc.Dropdown(id = "sorte_dropdown",
                        options=[{'label':sorte_traduction[sorta],'value':sorta} for sorta in sorte],
                        value=["Kruska"],
                        multi =True
-                       
-    
     )
 
 radio_ds = dcc.RadioItems(
@@ -62,7 +59,7 @@ dropdown_vrednosti = dcc.Dropdown(id="vrednosti_drop",
                                   )
 
     
-childrenn = [html.H1("Observed Data from PIS sensors"),
+childrenn = [html.H1("Observed Data - Vojvodina"),
                                    radio_ds,dropdown_vrednosti,dropdown,
                                    html.Div(id="graphs")]
 
@@ -74,21 +71,21 @@ app.layout = html.Div (children=childrenn)
     [Input(component_id='sorte_dropdown', component_property='value'),Input(component_id='vrednosti_drop',component_property='value'),Input(component_id="koje",component_property="value")]
 )
 def update_output_div(sorte_list,vrednost,koje):
-    min_date = None
-    max_date = None
     graphlist = []
-    for sorta in sorte_list:
+    def make_graphs_for_sort(sorta):
+        min_date = None
+        max_date = None
         graphlist_sorta=[]
+        dataframes = dict()
         print (sorta)
         po_sorti = [fname for fname in csv_fnames if sorta in fname and not sorta + " Ogled" in fname]
-        dataframes = dict()
         for fname in po_sorti:
             df = pd.read_csv(fname,index_col="Date",converters={"Date":pd.to_datetime})
             min_date = df.index[0] if not min_date else (df.index[0] if df.index[0] <min_date else min_date)
             max_date = df.index[-1] if not max_date else (df.index[-1] if df.index[-1] > max_date else max_date)
             dataframes[fname] =df
         for fname,df in dataframes.items():
-            df = df if koje=="hourly" else df.resample('D').mean()
+            df = df.resample('2H').mean() if koje=="hourly" else df.resample('D').mean()
             graphlist_sorta.append(dcc.Graph(id=fname,
               figure= {
                   'data': [
@@ -100,10 +97,12 @@ def update_output_div(sorte_list,vrednost,koje):
                       'xaxis':{'range':[min_date,max_date]}
                   }
               }))
-
-        graphdict[sorta][vrednost]=graphlist_sorta
+        graphdict[sorta][vrednost][koje]=graphlist_sorta
+        return graphlist_sorta
+        
     for sorta in sorte_list:
-        graphlist = graphlist + graphdict[sorta][vrednost]
+        graphlist+= graphdict[sorta][vrednost][koje] if graphdict[sorta][vrednost][koje] else make_graphs_for_sort(sorta)
+
     return graphlist
 
 
