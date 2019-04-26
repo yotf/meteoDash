@@ -16,11 +16,11 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
-csv_fnames = [d for d in os.listdir(".") if d.startswith("0000")]
-csv_fnames.sort(key= lambda x: x.split("_")[3])
+pickle_fnames = [d for d in os.listdir(".") if d.startswith("0000") and d.endswith(".pkl")]
+pickle_fnames.sort(key= lambda x: x.split("_")[3])
 graphdict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
-sorte = list(set([x.split("_")[3] for x in csv_fnames]))
+sorte = list(set([x.split("_")[3] for x in pickle_fnames]))
 
 sorte_traduction = {"Kruska":"Pear","Jabuka":"Apple","Jabuka Ogled":"Apple Experiment","Vinova Loza":"Grape Vine","Sljiva":"Plum"}
 dropdown= dcc.Dropdown(id = "sorte_dropdown",
@@ -77,9 +77,9 @@ def update_output_div(sorte_list,vrednost,koje):
     def make_graphs_for_sort(sorta):
         def read_dataframes_for_sort(sorta):
             dfs = dict()
-            po_sorti = [fname for fname in csv_fnames if sorta in fname and not sorta + " Ogled" in fname]
+            po_sorti = [fname for fname in pickle_fnames if sorta in fname and not sorta + " Ogled" in fname]
             for fname in po_sorti:
-                df = pd.read_csv(fname,index_col="Date",converters={"Date":pd.to_datetime})
+                df = pd.read_pickle(fname)
                 dfs[fname]=df
             return dfs
         min_date = None
