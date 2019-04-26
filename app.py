@@ -7,6 +7,8 @@ import os
 from dash.dependencies import Input, Output, State
 from collections import defaultdict
 from timeit import default_timer as timer
+from metpy.calc import thermo
+from metpy.units import units
 dataframes = defaultdict(dict)
 
 from plotly import tools
@@ -56,7 +58,11 @@ options_hourly =  [{'label':"Average temperature",'value':"Tavg"},
 
 options_daily = options_hourly + [{'label':"Bowen daily", "value" :"bowen"},
                                   {'label':"Temperature Tendency daily", "value" :"tendt"},
-                                  {'label':"Q Tendency daily", "value" :"tendq"}]
+                                  {'label':"Q Tendency daily", "value" :"tendq"},
+                                  {'label':"R1", "value" :"R1"},
+                                  {'label':"R2", "value" :"R2"},
+                                  {'label':"Minimal daily Temperature", "value" :"Tmin"},
+                                  {'label':"Maximal daily Temperature", "value" :"Tmax"}]
 
 
 dropdown_vrednosti = dcc.Dropdown(id="vrednosti_drop",
@@ -116,7 +122,12 @@ def update_output_div(sorte_list,vrednost,koje):
             min_date = df.index[0] if not min_date else (df.index[0] if df.index[0] <min_date else min_date)
             max_date = df.index[-1] if not max_date else (df.index[-1] if df.index[-1] > max_date else max_date)
         for fname,df in dataframes[sorta].items():
-            df = df if koje=="hourly" else df.resample('D').mean()
+            mindf = df.Tavg.resample('D').min()
+            maxdf = df.Tavg.resample('D').max()
+            zz =pd.concat([mindf,maxdf],axis=1)
+            zz.columns = ["Tmin","Tmax"]
+            df = df if koje=="hourly" else pd.concat([df.resample('D').mean(),zz],axis=1)
+            print (df.columns)
             if koje=="daily":
                 Lv = 2265.705
                 Cp = 1.003
@@ -124,8 +135,11 @@ def update_output_div(sorte_list,vrednost,koje):
                 df["tendq"] = Lv*df.q.diff()/(24*3600)
                 df["bowen"] = (Cp*df.Tavg.diff())/(Lv*df.q.diff())
                 df.bowen[(df.bowen>5) | (df.bowen<-2)] = None
-#                df["R1"] = 
-#                df["R2"] = 
+                E_tmin = df.Tmin.apply(lambda x: thermo.saturation_vapor_pressure(x * units.celsius))
+                E_tmax = df.Tmax.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
+                E_avg = df.Tavg.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
+                df["R2"] = (E_tmin/E_tmax).apply(lambda x: x.magnitude)
+                df["R1"] =  ((df.RH*E_avg)/E_tmax).apply(lambda x : x.magnitude)
             graphlist_sorta.append(dcc.Graph(id=fname,
               figure= {
                   'data': [

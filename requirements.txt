@@ -34,3 +34,4 @@ traitlets==4.3.2
 urllib3==1.24.1
 Werkzeug==0.15.1
 wrapt==1.11.1
+MetPy==0.10.0
