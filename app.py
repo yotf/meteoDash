@@ -133,9 +133,6 @@ def update_output_div(sorte_list,vrednost,koje):
     for sorta in sorte_list:
         print (sorta,vrednost)
         graphlist+= make_graphs_for_sort(sorta,vrednost)
-
-    print(graphlist)
-
     return graphlist
 
 
