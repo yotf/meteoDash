@@ -18,13 +18,16 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
-pickle_fnames = [d for d in os.listdir(".") if d.startswith("0000") and d.endswith(".pkl")]
-pickle_fnames.sort(key= lambda x: x.split("_")[3])
-graphdict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+pickle_fnames = dict()
+pickle_fnames["hourly"] = [d for d in os.listdir(".") if d.startswith("0000") and d.endswith("_hourly.pkl")]
+pickle_fnames["daily"] = [d for d in os.listdir(".") if d.startswith("0000") and d.endswith("_daily.pkl")]
+pickle_fnames["average"] = [ d for d in os.listdir(".") if d.startswith("0000") and d.endswith("_AVG.pkl")]
+print (pickle_fnames)
+sorte = list(set([x.split("_")[3] for x in pickle_fnames["hourly"]]))
 
-sorte = list(set([x.split("_")[3] for x in pickle_fnames]))
+#vrednosti_stilovi = {"lcl":
 
-sorte_traduction = {"Kruska":"Pear","Jabuka":"Apple","Jabuka Ogled":"Apple Experiment","Vinova Loza":"Grape Vine","Sljiva":"Plum"}
+sorte_traduction = {"Kruska":"Pear","Jabuka":"Apple","Jabuka Ogled":"Apple Experiment","Vinova Loza":"Grape Vine","Sljiva":"Plum","Visnja":"Sour Cherry"}
 dropdown= dcc.Dropdown(id = "sorte_dropdown",
                        options=[{'label':sorte_traduction[sorta],'value':sorta} for sorta in sorte],
                        value=["Kruska"],
@@ -34,25 +37,20 @@ dropdown= dcc.Dropdown(id = "sorte_dropdown",
 radio_ds = dcc.RadioItems(
     options=[
             {'label': 'Average Daily', 'value': 'daily'},
-            {'label': 'Hourly', 'value': 'hourly'}
+            {'label': 'Hourly', 'value': 'hourly'},
+            {'label': 'Averaged over years',"value":"average"}
 
         ],
     value='hourly',
     id ="koje"
     )
 
-dropdown_funkc = dcc.Dropdown(id="panel_dropdown",
-                              options = [{'label':"Pregled satnih vrednosti",'value':"Tavg"},
-                                         {'label':"Fenologija",'value':"fen"}]
-                              )
-
-
-
 options_hourly =  [{'label':"Average temperature",'value':"Tavg"},
                    {'label':"Relative humidity", "value" : "RH"},
                    {'label':"LCL", "value" :"lcl"},
                    {'label':"q", "value" :"q"},
                    {'label':"qsat", "value" :"qsat"},
+                   {'label':"Precipitation", "value" :"Precipitation"},
                    {'label':"Dew Point", "value" :"dewpoint"}]
 
 
@@ -66,15 +64,14 @@ options_daily = options_hourly + [{'label':"Bowen daily", "value" :"bowen"},
 
 
 dropdown_vrednosti = dcc.Dropdown(id="vrednosti_drop",
-                                  options = [{'label':"Average temperature",'value':"Tavg"},
-                                             {'label':"Relative humidity", "value" : "RH"},
-                                             {'label':"LCL", "value" :"lcl"},
-                                             {'label':"q", "value" :"q"},
-                                             {'label':"qsat", "value" :"qsat"},
-                                             {'label':"Dew Point", "value" :"dewpoint"}
-                                             ],
-                                  value="Tavg"
+                                  options =options_hourly,
+                                  value="Tavg",
+                                  multi=False
+
                                   )
+
+tipovi_grafika = defaultdict(lambda: "lines")
+tipovi_grafika["bowen"] ="markers"
 
     
 childrenn = [html.H1("Observed Data - Vojvodina"),
@@ -88,10 +85,8 @@ app.layout = html.Div (children=childrenn)
     [Input(component_id='koje', component_property='value')],[State(component_id ="vrednosti_drop",component_property="options")]
 )
 def update_vrednosti_drop(koje,options):
-    print(koje)
-    print(options)
-    assert(koje=="daily" or koje=="hourly")
-    return options_daily if koje=="daily" else options_hourly
+    assert(koje=="daily" or koje=="hourly" or koje=="average")
+    return options_hourly if koje=="hourly" else options_daily
 
 
 @app.callback(
@@ -100,10 +95,10 @@ def update_vrednosti_drop(koje,options):
 )
 def update_output_div(sorte_list,vrednost,koje):
     graphlist = []
-    def make_graphs_for_sort(sorta):
-        def read_dataframes_for_sort(sorta):
+    def make_graphs_for_sort(sorta,vrednost):
+        def read_dataframes_for_sort(sorta,koje):
             dfs = dict()
-            po_sorti = [fname for fname in pickle_fnames if sorta in fname and not sorta + " Ogled" in fname]
+            po_sorti = [fname for fname in pickle_fnames[koje] if sorta in fname and not sorta + " Ogled" in fname]
             for fname in po_sorti:
                 df = pd.read_pickle(fname)
                 dfs[fname]=df
@@ -111,39 +106,19 @@ def update_output_div(sorte_list,vrednost,koje):
         min_date = None
         max_date = None
         graphlist_sorta=[]
-        print (sorta)
         start = timer()
-        dataframes[sorta] = dataframes[sorta] if sorta in dataframes else read_dataframes_for_sort(sorta)
+        dataframes_sorta = read_dataframes_for_sort(sorta,koje)
         end = timer()
         print ("proslo vremena na citanje %s" %(end-start))
         start = timer()
-
-        for fname,df in dataframes[sorta].items():
+        for fname,df in dataframes_sorta.items():
             min_date = df.index[0] if not min_date else (df.index[0] if df.index[0] <min_date else min_date)
             max_date = df.index[-1] if not max_date else (df.index[-1] if df.index[-1] > max_date else max_date)
-        for fname,df in dataframes[sorta].items():
-            mindf = df.Tavg.resample('D').min()
-            maxdf = df.Tavg.resample('D').max()
-            zz =pd.concat([mindf,maxdf],axis=1)
-            zz.columns = ["Tmin","Tmax"]
-            df = df if koje=="hourly" else pd.concat([df.resample('D').mean(),zz],axis=1)
-            print (df.columns)
-            if koje=="daily":
-                Lv = 2265.705
-                Cp = 1.003
-                df["tendt"] = Cp*df.Tavg.diff()/(24*3600)
-                df["tendq"] = Lv*df.q.diff()/(24*3600)
-                df["bowen"] = (Cp*df.Tavg.diff())/(Lv*df.q.diff())
-                df.bowen[(df.bowen>5) | (df.bowen<-2)] = None
-                E_tmin = df.Tmin.apply(lambda x: thermo.saturation_vapor_pressure(x * units.celsius))
-                E_tmax = df.Tmax.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
-                E_avg = df.Tavg.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
-                df["R2"] = (E_tmin/E_tmax).apply(lambda x: x.magnitude)
-                df["R1"] =  ((df.RH*E_avg)/E_tmax).apply(lambda x : x.magnitude)
+        for fname,df in dataframes_sorta.items():
             graphlist_sorta.append(dcc.Graph(id=fname,
               figure= {
                   'data': [
-                      {'x' : df.index,'y':df[vrednost], 'type': 'line','name':vrednost}
+                      {'x' : df.index,'y':df[vrednost], 'type': "line", "mode": tipovi_grafika[vrednost],'name':vrednost}
                   ],
                   'layout': {
                       'title':"{} {}".format(vrednost,fname.split("_")[0:4]),
@@ -153,11 +128,13 @@ def update_output_div(sorte_list,vrednost,koje):
               }))
         end = timer()
         print ("proslo vremena na crtanje %s" %(end-start))
-        graphdict[sorta][vrednost][koje]=graphlist_sorta
         return graphlist_sorta
         
     for sorta in sorte_list:
-        graphlist+= graphdict[sorta][vrednost][koje] if graphdict[sorta][vrednost][koje] else make_graphs_for_sort(sorta)
+        print (sorta,vrednost)
+        graphlist+= make_graphs_for_sort(sorta,vrednost)
+
+    print(graphlist)
 
     return graphlist
 
