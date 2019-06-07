@@ -94,42 +94,53 @@ def update_vrednosti_drop(koje,options):
     [Input(component_id='sorte_dropdown', component_property='value'),Input(component_id='vrednosti_drop',component_property='value'),Input(component_id="koje",component_property="value")]
 )
 def update_output_div(sorte_list,vrednost,koje):
-    graphlist = []
     def make_graphs_for_sort(sorta,vrednost):
         def read_dataframes_for_sort(sorta,koje):
+            """Ucitava ih sve u listu iz kojih ce se posle praviti grafici"""
+            graph_content_list = []
             dfs = dict()
             po_sorti = [fname for fname in pickle_fnames[koje] if sorta in fname and not sorta + " Ogled" in fname]
             for fname in po_sorti:
                 df = pd.read_pickle(fname)
-                dfs[fname]=df
-            return dfs
-        min_date = None
-        max_date = None
+                graph_content_list.append({"id":fname,"x":df.index,"y":df[vrednost]})
+            return graph_content_list
+        def determine_max_min_2d(list_of_lists):
+            """Gets list of lists and determines min and max"""
+            min_date = None
+            max_date = None
+            for ls in list_of_lists:
+                min_date = ls.min() if not min_date else (ls.min() if ls.min() <min_date else min_date)
+                max_date = ls.max() if not max_date else (ls.max() if ls.max() > max_date else max_date)
+            return max_date,min_date
         graphlist_sorta=[]
         start = timer()
-        dataframes_sorta = read_dataframes_for_sort(sorta,koje)
+        graph_content_list = read_dataframes_for_sort(sorta,koje)
         end = timer()
         print ("proslo vremena na citanje %s" %(end-start))
         start = timer()
-        for fname,df in dataframes_sorta.items():
-            min_date = df.index[0] if not min_date else (df.index[0] if df.index[0] <min_date else min_date)
-            max_date = df.index[-1] if not max_date else (df.index[-1] if df.index[-1] > max_date else max_date)
-        for fname,df in dataframes_sorta.items():
-            graphlist_sorta.append(dcc.Graph(id=fname,
+        dates = [item['x'] for item in graph_content_list]
+        values = [item['y'] for item in graph_content_list]
+        maxd,mind = determine_max_min_2d(dates)
+        maxv,minv = determine_max_min_2d(values)
+        print (maxd,mind)
+        print (minv,maxv)
+        for graph_content in graph_content_list:
+            graphlist_sorta.append(dcc.Graph(id=graph_content["id"],
               figure= {
                   'data': [
-                      {'x' : df.index,'y':df[vrednost], 'type': "line", "mode": tipovi_grafika[vrednost],'name':vrednost}
+                      {'x' : graph_content["x"],'y':graph_content["y"], 'type': "line", "mode": tipovi_grafika[vrednost],'name':vrednost}
                   ],
                   'layout': {
-                      'title':"{} {}".format(vrednost,fname.split("_")[0:4]),
-                      'yaxis':{'title': vrednost},
-                      'xaxis':{'range':[min_date,max_date]}
+                      'title':"{} {}".format(vrednost,graph_content["id"].split("_")[0:4]),
+                      'yaxis':{'title': vrednost,'range':[minv,maxv]},
+                      'xaxis':{'range':[mind,maxd]}
                   }
               }))
         end = timer()
         print ("proslo vremena na crtanje %s" %(end-start))
         return graphlist_sorta
-        
+
+    graphlist= []
     for sorta in sorte_list:
         print (sorta,vrednost)
         graphlist+= make_graphs_for_sort(sorta,vrednost)
