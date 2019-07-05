@@ -4,7 +4,7 @@ import numpy as np
 from metpy.calc import thermo
 from metpy.units import units
 
-csv_fnames = [d for d in os.listdir(".") if d.startswith("0000") and d.endswith("00.csv")]
+csv_fnames = [d for d in os.listdir("./CSV") if d.startswith("0000") and d.endswith("00.csv")]
 
 def make_daily_avgs(hourly_df):
     mindf = hourly_df.Tavg.resample('D').min()
@@ -17,7 +17,7 @@ def make_daily_avgs(hourly_df):
     df["tendt"] = Cp*df.Tavg.diff()/(24*3600)
     df["tendq"] = Lv*df.q.diff()/(24*3600)
     df["bowen"] = (Cp*df.Tavg.diff())/(Lv*df.q.diff())
-    df.bowen[(df.bowen>5) | (df.bowen<0)] = None
+    df.bowen[(df.bowen>5) | (df.bowen<-5)]=None
     E_tmin = df.Tmin.apply(lambda x: thermo.saturation_vapor_pressure(x * units.celsius))
     E_tmax = df.Tmax.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
     E_avg = df.Tavg.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
@@ -26,12 +26,18 @@ def make_daily_avgs(hourly_df):
     return df
 
 def make_smoothed(daily_df):
-    smoothed_df = daily_df.groupby(daily_df.index.dayofyear).mean()
+    smoothed_group = daily_df.groupby(daily_df.index.dayofyear)
+    smoothed_std = smoothed_group.std()
+    print (smoothed_std)
+    smoothed_val = smoothed_group.mean()
+    smoothed_std.columns = ["std_"+ c for c in smoothed_std.columns]
+    smoothed_df = pd.concat([smoothed_val,smoothed_std],axis=1)
+    print (smoothed_df)
     return smoothed_df
     
 
 for fname in csv_fnames:
-    df = pd.read_csv(fname,index_col="Date",converters={"Date":pd.to_datetime})
+    df = pd.read_csv(os.path.join("./CSV",fname),index_col="Date",converters={"Date":pd.to_datetime})
     daily_df = make_daily_avgs(df)
     fname_base = fname.split(".")[0]
     fname_to_write = fname_base + "_hourly.pkl"

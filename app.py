@@ -125,17 +125,17 @@ def update_output_div(sorte_list,vrednost,koje):
         print (maxd,mind)
         print (minv,maxv)
         for graph_content in graph_content_list:
-            graphlist_sorta.append(dcc.Graph(id=graph_content["id"],
+            graph_data = [{'x' : graph_content["x"],'y':graph_content["y"], 'type': "line", "mode": tipovi_grafika[vrednost],'name':vrednost},
+                      {'x' : graph_content["x"],'y':graph_content["y"].rolling(10).mean(),"error_y": {"array": graph_content["y"].rolling(10).std(), "visible":True,'width':0}, 'name':"rolling average"}] if koje=="average" else [{'x' : graph_content["x"],'y':graph_content["y"], 'type': "line", "mode": tipovi_grafika[vrednost],'name':vrednost}]
+            graphlist_sorta.append(html.Div(children=[html.Button('Details',id=graph_content["id"]),dcc.Graph(id="g"+graph_content["id"],
               figure= {
-                  'data': [
-                      {'x' : graph_content["x"],'y':graph_content["y"], 'type': "line", "mode": tipovi_grafika[vrednost],'name':vrednost}
-                  ],
+                  'data': graph_data,
                   'layout': {
                       'title':"{} {}".format(vrednost,graph_content["id"].split("_")[0:4]),
                       'yaxis':{'title': vrednost,'range':[minv,maxv]},
                       'xaxis':{'range':[mind,maxd]}
                   }
-              }))
+              })]))
         end = timer()
         print ("proslo vremena na crtanje %s" %(end-start))
         return graphlist_sorta
