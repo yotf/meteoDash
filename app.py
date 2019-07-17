@@ -131,7 +131,7 @@ def update_output_div(sorte_list,vrednost,koje):
               figure= {
                   'data': graph_data,
                   'layout': {
-                      'title':"{} {}".format(vrednost,graph_content["id"].split("_")[0:4]),
+                      'title':"{} {}".format(vrednost,graph_content["id"].split("_")[0:6]),
                       'yaxis':{'title': vrednost,'range':[minv,maxv]},
                       'xaxis':{'range':[mind,maxd]}
                   }

@@ -27,27 +27,32 @@ def make_daily_avgs(hourly_df):
 
 def make_smoothed(daily_df):
     smoothed_group = daily_df.groupby(daily_df.index.dayofyear)
-    smoothed_std = smoothed_group.std()
-    print (smoothed_std)
+    print(daily_df.index[0],daily_df.index[-1])
     smoothed_val = smoothed_group.mean()
+    smoothed_std = smoothed_group.std()
     smoothed_std.columns = ["std_"+ c for c in smoothed_std.columns]
     smoothed_df = pd.concat([smoothed_val,smoothed_std],axis=1)
-    print (smoothed_df)
+    smoothed_df["period_start"] = [str(daily_df.index[0])]*len(smoothed_df.index)
+    smoothed_df["period_end"] = [str(daily_df.index[-1])]*len(smoothed_df.index)
     return smoothed_df
-    
+
+
 
 for fname in csv_fnames:
+    def make_fname(fname_base,pstart,pend,suffix):
+        return "_".join(fname_base.split("_")[0:4]+ [str(pstart.date()),str(pend.date()),suffix])
     df = pd.read_csv(os.path.join("./CSV",fname),index_col="Date",converters={"Date":pd.to_datetime})
     daily_df = make_daily_avgs(df)
+    pstart,pend = daily_df.index[0],daily_df.index[-1]
     fname_base = fname.split(".")[0]
-    fname_to_write = fname_base + "_hourly.pkl"
+    fname_to_write = make_fname(fname_base,pstart,pend,"hourly.pkl")
     print (fname_to_write)
-
-    fname_to_write_daily = fname_base + "_daily.pkl"
-    fname_csv_daily = fname_base + "_daily.csv"
-    fname_csv_averaged =  fname_base + "_AVG.csv"
-    fname_pkl_averaged = fname_base+ "_AVG.pkl"
+    fname_to_write_daily = make_fname(fname_base,pstart,pend, "daily.pkl")
+    fname_csv_daily = make_fname(fname_base,pstart,pend, "daily.csv")
+    fname_csv_averaged = make_fname(fname_base,pstart,pend, "AVG.csv")
     smoothed_df = make_smoothed(daily_df)
+    fname_pkl_averaged = make_fname(fname_base,pstart,pend,"AVG.pkl")
+    print (fname_pkl_averaged)
     smoothed_df.to_pickle(fname_pkl_averaged)
     smoothed_df.to_csv(fname_csv_averaged)
     daily_df.to_csv(fname_csv_daily)
