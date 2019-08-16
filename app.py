@@ -80,6 +80,8 @@ childrenn = [html.H1("Observed Data - Vojvodina"),
 
 app.layout = html.Div (children=childrenn)
 
+graph_config = {"toImageButtonOptions":{"width":1500,"height":400,"scale":2}}#,"modeBarButtonsToAdd":["sendDataToCloud"]}
+
 @app.callback(
     Output(component_id='vrednosti_drop', component_property='options'),
     [Input(component_id='koje', component_property='value')],[State(component_id ="vrednosti_drop",component_property="options")]
@@ -127,7 +129,7 @@ def update_output_div(sorte_list,vrednost,koje):
         for graph_content in graph_content_list:
             graph_data = [{'x' : graph_content["x"],'y':graph_content["y"], 'type': "line", "mode": tipovi_grafika[vrednost],'name':vrednost},
                       {'x' : graph_content["x"],'y':graph_content["y"].rolling(10).mean(),"error_y": {"array": graph_content["y"].rolling(10).std(), "visible":True,'width':0}, 'name':"rolling average"}] if koje=="average" else [{'x' : graph_content["x"],'y':graph_content["y"], 'type': "line", "mode": tipovi_grafika[vrednost],'name':vrednost}]
-            graphlist_sorta.append(html.Div(children=[html.Button('Details',id=graph_content["id"]),dcc.Graph(id="g"+graph_content["id"],
+            graphlist_sorta.append(html.Div(children=[html.Button('Details',id=graph_content["id"]),dcc.Graph(id="g"+graph_content["id"],config=graph_config,
               figure= {
                   'data': graph_data,
                   'layout': {

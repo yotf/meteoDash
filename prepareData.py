@@ -17,7 +17,7 @@ def make_daily_avgs(hourly_df):
     df["tendt"] = Cp*df.Tavg.diff()/(24*3600)
     df["tendq"] = Lv*df.q.diff()/(24*3600)
     df["bowen"] = (Cp*df.Tavg.diff())/(Lv*df.q.diff())
-    df.bowen[(df.bowen>5) | (df.bowen<-5)]=None
+    df.bowen[(df.bowen>100) | (df.bowen<-100)]=None
     E_tmin = df.Tmin.apply(lambda x: thermo.saturation_vapor_pressure(x * units.celsius))
     E_tmax = df.Tmax.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
     E_avg = df.Tavg.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
@@ -34,6 +34,12 @@ def make_smoothed(daily_df):
     smoothed_df = pd.concat([smoothed_val,smoothed_std],axis=1)
     smoothed_df["period_start"] = [str(daily_df.index[0])]*len(smoothed_df.index)
     smoothed_df["period_end"] = [str(daily_df.index[-1])]*len(smoothed_df.index)
+    za_rolling = [c for c in smoothed_df.columns if (not c.startswith("Date") and not c.startswith("std") and not c.startswith("period"))]
+    print (za_rolling)
+    for col in za_rolling:
+        smoothed_df["rolling_mean"+col] = smoothed_df[col].rolling(10).mean()
+        smoothed_df["rolling_std_"+col] = smoothed_df[col].rolling(10).std()
+    print (smoothed_df)
     return smoothed_df
 
 
