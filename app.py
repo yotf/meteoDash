@@ -80,7 +80,7 @@ childrenn = [html.H1("Observed Data - Vojvodina"),
 
 app.layout = html.Div (children=childrenn)
 
-graph_config = {"toImageButtonOptions":{"width":1500,"height":400,"scale":2}}#,"modeBarButtonsToAdd":["sendDataToCloud"]}
+graph_config = {"toImageButtonOptions":{"width":1500,"height":600,"scale":1}}#,"modeBarButtonsToAdd":["sendDataToCloud"]}
 
 @app.callback(
     Output(component_id='vrednosti_drop', component_property='options'),
@@ -133,9 +133,11 @@ def update_output_div(sorte_list,vrednost,koje):
               figure= {
                   'data': graph_data,
                   'layout': {
-                      'title':"{} {}".format(vrednost,graph_content["id"].split("_")[0:6]),
-                      'yaxis':{'title': vrednost,'range':[minv,maxv]},
-                      'xaxis':{'range':[mind,maxd]}
+                      'title':{"text":"{} {}".format(vrednost,graph_content["id"].split("_")[0:6]),"font":{"size":20}},
+                      'yaxis':{'title':{"text": vrednost,"font":{"size":25}},'range':[minv,maxv],'zeroline':False if vrednost=="bowen" else True,"tickfont":{"size":25}},
+                      'xaxis':{'range':[mind,maxd],"tickfont":{"size":25},'dtick':30 if koje=="average" else None},
+                      'legend':{'font':{"size":20}},
+                      'shapes':[{'type':'line', 'y0':1,'y1':1,'x0':0,'x1':365,'line':{'width':0.8}} if vrednost=="bowen" else None]
                   }
               })]))
         end = timer()
