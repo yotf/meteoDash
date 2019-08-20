@@ -127,15 +127,17 @@ def update_output_div(sorte_list,vrednost,koje):
         print (maxd,mind)
         print (minv,maxv)
         for graph_content in graph_content_list:
-            graph_data = [{'x' : graph_content["x"],'y':graph_content["y"], 'type': "line", "mode": tipovi_grafika[vrednost],'name':vrednost},
-                      {'x' : graph_content["x"],'y':graph_content["y"].rolling(10).mean(),"error_y": {"array": graph_content["y"].rolling(10).std(), "visible":True,'width':0}, 'name':"rolling average"}] if koje=="average" else [{'x' : graph_content["x"],'y':graph_content["y"], 'type': "line", "mode": tipovi_grafika[vrednost],'name':vrednost}]
+            graph_data = [{'x' : graph_content["x"],'y': graph_content["y"], 'type': "line", "mode": tipovi_grafika[vrednost],'name':vrednost},
+                      {'x' : graph_content["x"],'y':graph_content["y"].rolling(10).mean(),"error_y": {"array": graph_content["y"].rolling(10).std(), "visible":True,'width':0}, 'name':"rolling average"}]if (koje=="average" or koje=="daily") else[
+                    {'x' : graph_content["x"],'y':graph_content["y"], 'type': "line", "mode": tipovi_grafika[vrednost],'name':vrednost}]
+            
             graphlist_sorta.append(html.Div(children=[html.Button('Details',id=graph_content["id"]),dcc.Graph(id="g"+graph_content["id"],config=graph_config,
               figure= {
                   'data': graph_data,
                   'layout': {
                       'title':{"text":"{} {}".format(vrednost,graph_content["id"].split("_")[0:6]),"font":{"size":20}},
-                      'yaxis':{'title':{"text": vrednost,"font":{"size":25}},'range':[minv,maxv],'zeroline':False if vrednost=="bowen" else True,"tickfont":{"size":25}},
-                      'xaxis':{'range':[mind,maxd],"tickfont":{"size":25},'dtick':30 if koje=="average" else None},
+                      'yaxis':{'title':{"text":vrednost,"font":{"size":25}},'range':[minv,maxv],'zeroline':False if vrednost=="bowen" else True,"tickfont":{"size":25}},
+                      'xaxis':{'title':{"text":"DoY" if koje=="average" else None,"font":{"size":25}},'range':[mind,maxd],"tickfont":{"size":25},'dtick':(30 if koje=="average" else None)},
                       'legend':{'font':{"size":20}},
                       'shapes':[{'type':'line', 'y0':1,'y1':1,'x0':0,'x1':365,'line':{'width':0.8}} if vrednost=="bowen" else None]
                   }

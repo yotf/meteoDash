@@ -13,9 +13,9 @@ def make_daily_avgs(hourly_df):
     zz.columns = ["Tmin","Tmax"]
     df = pd.concat([hourly_df.resample('D').mean(),zz],axis=1)
     Lv = 2265.705
-    Cp = 1.003
+    Cp = 1003 # J/kg
     df["tendt"] = Cp*df.Tavg.diff()/(24*3600)
-    df["tendq"] = Lv*df.q.diff()/(24*3600)
+    df["tendq"] = Lv*df.q.diff()/(24*3600) *1000 #prebacujemo u grame
     df["bowen"] = (Cp*df.Tavg.diff())/(Lv*df.q.diff())
     df.bowen[(df.bowen>100) | (df.bowen<-100)]=None
     E_tmin = df.Tmin.apply(lambda x: thermo.saturation_vapor_pressure(x * units.celsius))
