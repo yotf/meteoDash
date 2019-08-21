@@ -4,8 +4,28 @@ import numpy as np
 from metpy.calc import thermo
 from metpy.units import units
 
-csv_fnames = [d for d in os.listdir("./CSV") if d.startswith("0000") and d.endswith("00.csv")]
 
+csv_fnames = [d for d in os.listdir("./source_CSV") if d.startswith("0000") and d.endswith(".csv")]
+
+def calculate_hourly(hourly_df):
+    """Calculates values for hourly data.Takes raw csv period data, 
+changes names and calculates LCL and qsat and q and dewpoint"""
+    from lcl_berkley import lcl as lclb
+    kelvin_difference = 273.15
+    pressure = 101325.0 *units.pascal
+    hourly_df = hourly_df[['HC Air temperature [°C] avg','HC Relative humidity [%] avg',
+       'Precipitation [mm] sum','Soil temperature [°C] avg']]
+    hourly_df.columns=["Tavg","RH","Precipitation","SAvg"]
+    hourly_df.RH = hourly_df.RH/100
+    hourly_df = hourly_df[hourly_df.RH!=0] #izbacujemo sve kolone koje imaju u RH nulu
+    hourly_df["dewpoint"] = hourly_df.apply(lambda x : thermo.dewpoint_rh(x.Tavg* units.celsius,x.RH),axis=1).apply(lambda x: x.magnitude)
+    hourly_df["q"] = hourly_df.apply(lambda x: thermo.mixing_ratio_from_relative_humidity(x.RH,x.Tavg*units.celsius, pressure),axis=1).apply(lambda x: thermo.specific_humidity_from_mixing_ratio(x)).apply(lambda x: x.magnitude)
+    hourly_df["qsat"] = hourly_df.apply(lambda x : thermo.saturation_mixing_ratio(pressure,x.Tavg * units.celsius),axis=1).apply(
+    lambda x: thermo.specific_humidity_from_mixing_ratio(x)).apply(lambda x: x.magnitude)
+    hourly_df["lcl"] = hourly_df.apply(lambda x: lclb.lcl(pressure.magnitude,x.Tavg + kelvin_difference,x.RH),axis=1)
+    return hourly_df
+    
+    
 def make_daily_avgs(hourly_df):
     mindf = hourly_df.Tavg.resample('D').min()
     maxdf = hourly_df.Tavg.resample('D').max()
@@ -47,11 +67,13 @@ def make_smoothed(daily_df):
 for fname in csv_fnames:
     def make_fname(fname_base,pstart,pend,suffix):
         return "_".join(fname_base.split("_")[0:4]+ [str(pstart.date()),str(pend.date()),suffix])
-    df = pd.read_csv(os.path.join("./CSV",fname),index_col="Date",converters={"Date":pd.to_datetime})
+    df = pd.read_csv(os.path.join("./source_CSV",fname),index_col="Date",converters={"Date":pd.to_datetime})
+    df = calculate_hourly(df) 
     daily_df = make_daily_avgs(df)
     pstart,pend = daily_df.index[0],daily_df.index[-1]
     fname_base = fname.split(".")[0]
     fname_to_write = make_fname(fname_base,pstart,pend,"hourly.pkl")
+    fname_hourly_csv = make_fname(fname_base,pstart,pend,"hourly.csv")
     print (fname_to_write)
     fname_to_write_daily = make_fname(fname_base,pstart,pend, "daily.pkl")
     fname_csv_daily = make_fname(fname_base,pstart,pend, "daily.csv")
@@ -63,6 +85,7 @@ for fname in csv_fnames:
     smoothed_df.to_csv(fname_csv_averaged)
     daily_df.to_csv(fname_csv_daily)
     df.to_pickle(fname_to_write)
+    df.to_csv(fname_hourly_csv)
     daily_df.to_pickle(fname_to_write_daily)
     
     
