@@ -9,27 +9,35 @@ from collections import defaultdict
 from timeit import default_timer as timer
 from metpy.calc import thermo
 from metpy.units import units
+import itertools
 dataframes = defaultdict(dict)
 
 from plotly import tools
 import plotly.plotly as py
 import plotly.graph_objs as go
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+pickle_dir = "./pickle/"
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 pickle_fnames = dict()
-pickle_fnames["hourly"] = [d for d in os.listdir(".") if d.startswith("0000") and d.endswith("_hourly.pkl")]
-pickle_fnames["daily"] = [d for d in os.listdir(".") if d.startswith("0000") and d.endswith("_daily.pkl")]
-pickle_fnames["average"] = [ d for d in os.listdir(".") if d.startswith("0000") and d.endswith("_AVG.pkl")]
+pickle_fnames["hourly"] = [d for d in os.listdir(pickle_dir) if d.startswith("0000") and d.endswith("_hourly.pkl")]
+pickle_fnames["daily"] = [d for d in os.listdir(pickle_dir) if d.startswith("0000") and d.endswith("_daily.pkl")]
+pickle_fnames["average"] = [ d for d in os.listdir(pickle_dir) if d.startswith("0000") and d.endswith("_AVG.pkl")]
 print (pickle_fnames)
 sorte = list(set([x.split("_")[3] for x in pickle_fnames["hourly"]]))
+print (sorte)
 
 #vrednosti_stilovi = {"lcl":
 
-sorte_traduction = {"Kruska":"Pear","Jabuka":"Apple","Jabuka Ogled":"Apple Experiment","Vinova Loza":"Grape Vine","Sljiva":"Plum","Visnja":"Sour Cherry"}
+#def constant_factory(value):
+#    return itertools.repeat(value).__next__
+class missing_dict(defaultdict):
+    def __missing___(self,key):
+        return key
+sorte_traduction = dict({"Psenica":"Wheat", "Krompir i Psenica i Jecam": "Potato, Wheat, Barley","Breskva":"Peach","Kruska":"Pear","Jabuka":"Apple","Jabuka Ogled":"Apple Experiment","Vinova Loza":"Grape Vine","Sljiva":"Plum","Visnja":"Sour Cherry","Psenica i Secerna Repa":"Wheat and Sugar beet","Psenica i Paprika":"Wheat and Capsicum","Paprika":"Capsicum","Psenica,Krompir,Uljana Repica":"Wheat, potato or rapeseed","Secerna Repa":"Sugar beet"})
 dropdown= dcc.Dropdown(id = "sorte_dropdown",
-                       options=[{'label':sorte_traduction[sorta],'value':sorta} for sorta in sorte],
+                       options=[{'label':sorte_traduction.get(sorta,sorta),'value':sorta} for sorta in sorte],
                        value=["Kruska"],
                        multi =True
     )

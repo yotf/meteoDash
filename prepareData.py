@@ -37,7 +37,7 @@ def make_daily_avgs(hourly_df):
     df["tendt"] = Cp*df.Tavg.diff()/(24*3600)
     df["tendq"] = (Lv*df.q.diff()/(24*3600)) 
     df["bowen"] = (Cp*df.Tavg.diff())/(Lv*df.q.diff())
-    df.bowen[(df.bowen>100) | (df.bowen<-100)]=None
+    df.bowen[(df.bowen>20) | (df.bowen<-20)]=None
     E_tmin = df.Tmin.apply(lambda x: thermo.saturation_vapor_pressure(x * units.celsius))
     E_tmax = df.Tmax.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
     E_avg = df.Tavg.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
