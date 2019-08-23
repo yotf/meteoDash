@@ -90,6 +90,7 @@ app.layout = html.Div (children=childrenn)
 
 graph_config = {"toImageButtonOptions":{"width":1500,"height":600,"scale":1}}#,"modeBarButtonsToAdd":["sendDataToCloud"]}
 
+
 @app.callback(
     Output(component_id='vrednosti_drop', component_property='options'),
     [Input(component_id='koje', component_property='value')],[State(component_id ="vrednosti_drop",component_property="options")]
@@ -111,7 +112,7 @@ def update_output_div(sorte_list,vrednost,koje):
             dfs = dict()
             po_sorti = [fname for fname in pickle_fnames[koje] if sorta in fname and not sorta + " Ogled" in fname]
             for fname in po_sorti:
-                df = pd.read_pickle(fname)
+                df = pd.read_pickle(os.path.join(pickle_dir,fname))
                 graph_content_list.append({"id":fname,"x":df.index,"y":df[vrednost]})
             return graph_content_list
         def determine_max_min_2d(list_of_lists):
@@ -139,7 +140,7 @@ def update_output_div(sorte_list,vrednost,koje):
                       {'x' : graph_content["x"],'y':graph_content["y"].rolling(10).mean(),"error_y": {"array": graph_content["y"].rolling(10).std(), "visible":True,'width':0}, 'name':"rolling average"}]if (koje=="average" or koje=="daily") else[
                     {'x' : graph_content["x"],'y':graph_content["y"], 'type': "line", "mode": tipovi_grafika[vrednost],'name':vrednost}]
             
-            graphlist_sorta.append(html.Div(children=[html.Button('Details',id=graph_content["id"]),dcc.Graph(id="g"+graph_content["id"],config=graph_config,
+            graphlist_sorta.append(html.Div(children=[dcc.Graph(id="g"+graph_content["id"],config=graph_config,
               figure= {
                   'data': graph_data,
                   'layout': {
