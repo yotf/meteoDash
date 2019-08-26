@@ -1,0 +1,13 @@
+total gross irigation, 
+total rainfall, 
+total net irrigation, 
+effective rainfall, 
+total irrigation losses, 
+total rain loss, 
+actual water use by crop, 
+moist deficit at harvest, 
+potential water use by crop, 
+actual irrigation requrement, 
+efficiency irrigation schedule, 
+efficiency rain, 
+deficiency irrigation schedule

@@ -3,14 +3,21 @@ import pandas as pd
 import numpy as np
 from metpy.calc import thermo
 from metpy.units import units
+from lcl_berkley import lcl as lclb
 
 
-csv_fnames = [d for d in os.listdir("./source_CSV") if d.startswith("0000") and d.endswith(".csv")]
+klim_folder = "./source_CSV/Klimatologija/1971_2000"
+PIS_folder = "./source_CSV/PIS"
+csv_fnames = [d for d in os.listdir(PIS_folder) if d.startswith("0000") and d.endswith(".csv")]
+csv_fnames = []
+klim_fnames = [f for f in os.listdir(klim_folder) if f.endswith(".w6d")]
+output_klim = "./source_CSV/Klimatologija/1971_2000/CALC"
+
+
 
 def calculate_hourly(hourly_df):
     """Calculates values for hourly data.Takes raw csv period data, 
 changes names and calculates LCL and qsat and q and dewpoint"""
-    from lcl_berkley import lcl as lclb
     kelvin_difference = 273.15
     pressure = 101325.0 *units.pascal
     hourly_df = hourly_df[['HC Air temperature [°C] avg','HC Relative humidity [%] avg',
@@ -27,6 +34,7 @@ changes names and calculates LCL and qsat and q and dewpoint"""
     
     
 def make_daily_avgs(hourly_df):
+    """ Takes hourly data, resmples it to daily data and calculates additonal values"""
     mindf = hourly_df.Tavg.resample('D').min()
     maxdf = hourly_df.Tavg.resample('D').max()
     zz = pd.concat([mindf,maxdf],axis=1)
@@ -46,6 +54,7 @@ def make_daily_avgs(hourly_df):
     return df
 
 def make_smoothed(daily_df):
+    """Pravi visegodisnje srednjake od dnevnih vrednosti"""
     smoothed_group = daily_df.groupby(daily_df.index.dayofyear)
     print(daily_df.index[0],daily_df.index[-1])
     smoothed_val = smoothed_group.mean()
@@ -67,7 +76,7 @@ def make_smoothed(daily_df):
 for fname in csv_fnames:
     def make_fname(fname_base,pstart,pend,suffix):
         return "_".join(fname_base.split("_")[0:4]+ [str(pstart.date()),str(pend.date()),suffix])
-    df = pd.read_csv(os.path.join("./source_CSV",fname),index_col="Date",converters={"Date":pd.to_datetime})
+    df = pd.read_csv(os.path.join(PIS_folder,fname),index_col="Date",converters={"Date":pd.to_datetime})
     df = calculate_hourly(df) 
     daily_df = make_daily_avgs(df)
     pstart,pend = daily_df.index[0],daily_df.index[-1]
@@ -87,6 +96,53 @@ for fname in csv_fnames:
     df.to_pickle(fname_to_write)
     df.to_csv(fname_hourly_csv)
     daily_df.to_pickle(fname_to_write_daily)
+
+for fname in klim_fnames:
+    Lv = 2265.705 *1000 #grami
+    Cp = 1003 # J/kg
+    base = fname.split("_")[0]
+    z = pd.read_csv(os.path.join(klim_folder,fname),delim_whitespace=True,index_col="DATE")
+    kelvin_offset = 273.15
+    pressure = 101325.0 *units.pascal
+    z= z[(z.TMIN<66) & (z.TMIN> -66)]
+    z["q"] = 0.622* (z.VAPO/pressure)
+    z.q = z.q*100
+    z.rename(columns = {"TMIN":"Tmin","TMAX":"Tmax","DATE":"Date"},inplace=True)
+    z["Tavg"] = (z.Tmax+z.Tmin)/2
+    z["RH"] = z.apply(lambda x :thermo.relative_humidity_from_specific_humidity(specific_humidity=x.q,temperature = x.Tavg* units.celsius,pressure = pressure),axis=1).apply(lambda x: x.magnitude)
+    print (z.RH[z.RH>1])
+    print (fname)
+    z["dewpoint"] = z.apply(lambda x : thermo.dewpoint_rh(x.Tavg* units.celsius,x.RH),axis=1).apply(lambda x: x.magnitude)
+    z["lcl"] = z.apply(lambda x: lclb.lcl(T=x.Tavg +kelvin_offset,p=pressure.magnitude,rh = x.RH),axis=1)
+    z["tendt"] = Cp*z.Tavg.diff()/(24*3600)
+    z["tendq"] = Lv*z.q.diff()/(24*3600)
+    print (z.q.diff())
+    z["bowen"] = (Cp*z.Tavg.diff())/(Lv*z.q.diff())
+    z.bowen[(z.bowen>5) | (z.bowen<-5)] = None
+#    z.bowen[(z.bowen>5) | (z.bowen<0)] = None
+    E_tmin = z.Tmin.apply(lambda x: thermo.saturation_vapor_pressure(x * units.celsius))
+    E_tmax = z.Tmax.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
+    E_avg = z.Tavg.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
+    z["R2"] = (E_tmin/E_tmax).apply(lambda x: x.magnitude)
+    z["R1"] =  ((z.RH*E_avg)/E_tmax).apply(lambda x : x.magnitude)
+    z.index = pd.to_datetime(arg=z.index,format="%Y%j")
+    z.to_pickle("00000%s_%s_%s_%s_%s_%s_daily.pkl" %(base,base,base,base,"1971","2000"))
+    grouped = z.groupby(z.index.dayofyear)
+    std = grouped.std()
+    std.columns = ["std_"+c for c in std.columns]
+    mean = grouped.mean()
+    gdf = pd.concat([std,mean],axis=1)
+ 
+    print (gdf)
+    for col in [c for c in mean.columns if not "DATE" in c]:
+       rol = mean[col].rolling(10)
+       gdf["rolling_mean_" + col] = rol.mean()
+       gdf["rolling_std_" + col] = rol.std()
+    print (gdf)
+    gdf.to_pickle("00000%s_%s_%s_%s_%s_%s_AVG.pkl" %(base,base,base,base,"1971","2000"))
+
+    
+    
     
     
 

@@ -25,7 +25,7 @@ pickle_fnames["hourly"] = [d for d in os.listdir(pickle_dir) if d.startswith("00
 pickle_fnames["daily"] = [d for d in os.listdir(pickle_dir) if d.startswith("0000") and d.endswith("_daily.pkl")]
 pickle_fnames["average"] = [ d for d in os.listdir(pickle_dir) if d.startswith("0000") and d.endswith("_AVG.pkl")]
 print (pickle_fnames)
-sorte = list(set([x.split("_")[3] for x in pickle_fnames["hourly"]]))
+sorte = list(set([x.split("_")[3] for x in pickle_fnames["daily"]]))
 print (sorte)
 
 #vrednosti_stilovi = {"lcl":
@@ -111,6 +111,8 @@ def update_output_div(sorte_list,vrednost,koje):
             graph_content_list = []
             dfs = dict()
             po_sorti = [fname for fname in pickle_fnames[koje] if sorta in fname and not sorta + " Ogled" in fname]
+            print ("PO SORTI")
+            print (po_sorti)
             for fname in po_sorti:
                 df = pd.read_pickle(os.path.join(pickle_dir,fname))
                 graph_content_list.append({"id":fname,"x":df.index,"y":df[vrednost]})
