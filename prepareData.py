@@ -8,12 +8,10 @@ from lcl_berkley import lcl as lclb
 
 klim_folder = "./source_CSV/Klimatologija/1971_2000"
 PIS_folder = "./source_CSV/PIS"
+output_klim = "./CSV/Klimatologija"
 csv_fnames = [d for d in os.listdir(PIS_folder) if d.startswith("0000") and d.endswith(".csv")]
-csv_fnames = []
 klim_fnames = [f for f in os.listdir(klim_folder) if f.endswith(".w6d")]
 output_klim = "./source_CSV/Klimatologija/1971_2000/CALC"
-
-
 
 def calculate_hourly(hourly_df):
     """Calculates values for hourly data.Takes raw csv period data, 
@@ -45,7 +43,7 @@ def make_daily_avgs(hourly_df):
     df["tendt"] = Cp*df.Tavg.diff()/(24*3600)
     df["tendq"] = (Lv*df.q.diff()/(24*3600)) 
     df["bowen"] = (Cp*df.Tavg.diff())/(Lv*df.q.diff())
-    df.bowen[(df.bowen>20) | (df.bowen<-20)]=None
+    df.loc[(df.bowen>20) | (df.bowen<-20),"bowen"]=None
     E_tmin = df.Tmin.apply(lambda x: thermo.saturation_vapor_pressure(x * units.celsius))
     E_tmax = df.Tmax.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
     E_avg = df.Tavg.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
@@ -98,25 +96,33 @@ for fname in csv_fnames:
     daily_df.to_pickle(fname_to_write_daily)
 
 for fname in klim_fnames:
+    import numpy as np
     Lv = 2265.705 *1000 #grami
     Cp = 1003 # J/kg
-    base = fname.split("_")[0]
+    base = fname.split("_")[0] 
     z = pd.read_csv(os.path.join(klim_folder,fname),delim_whitespace=True,index_col="DATE")
     kelvin_offset = 273.15
     pressure = 101325.0 *units.pascal
     z= z[(z.TMIN<66) & (z.TMIN> -66)]
+    print (z.loc[~(np.abs(z.VAPO-z.VAPO.mean()) <= (3*z.VAPO.std())),'VAPO'])
+#    z.loc[~(np.abs(z.VAPO-z.VAPO.mean()) <= (3*z.VAPO.std())),'VAPO'] = np.nan
+    print ("NONE's")
+    print (z.isnull().any())
+    z.VAPO.interpolate(inplace=True)
+    print ("NONE's")
+    print (z.isnull().any())
     z["q"] = 0.622* (z.VAPO/pressure)
     z.q = z.q*100
     z.rename(columns = {"TMIN":"Tmin","TMAX":"Tmax","DATE":"Date"},inplace=True)
     z["Tavg"] = (z.Tmax+z.Tmin)/2
-    z["RH"] = z.apply(lambda x :thermo.relative_humidity_from_specific_humidity(specific_humidity=x.q,temperature = x.Tavg* units.celsius,pressure = pressure),axis=1).apply(lambda x: x.magnitude)
-    print (z.RH[z.RH>1])
+    z["qsat"] = z.apply(lambda x: thermo.specific_humidity_from_mixing_ratio(thermo.saturation_mixing_ratio(tot_press = pressure,temperature = x.Tavg * units.celsius)).magnitude,axis=1)
+    z["RH2"] = z.apply(lambda x :thermo.relative_humidity_from_specific_humidity(specific_humidity=x.q,temperature = x.Tavg* units.celsius,pressure = pressure),axis=1).apply(lambda x: x.magnitude)
+    z["RH"] = z.apply(lambda x :x.VAPO/thermo.saturation_vapor_pressure(x.Tavg* units.celsius).magnitude,axis=1)
     print (fname)
     z["dewpoint"] = z.apply(lambda x : thermo.dewpoint_rh(x.Tavg* units.celsius,x.RH),axis=1).apply(lambda x: x.magnitude)
     z["lcl"] = z.apply(lambda x: lclb.lcl(T=x.Tavg +kelvin_offset,p=pressure.magnitude,rh = x.RH),axis=1)
     z["tendt"] = Cp*z.Tavg.diff()/(24*3600)
     z["tendq"] = Lv*z.q.diff()/(24*3600)
-    print (z.q.diff())
     z["bowen"] = (Cp*z.Tavg.diff())/(Lv*z.q.diff())
     z.bowen[(z.bowen>5) | (z.bowen<-5)] = None
 #    z.bowen[(z.bowen>5) | (z.bowen<0)] = None
@@ -127,19 +133,18 @@ for fname in klim_fnames:
     z["R1"] =  ((z.RH*E_avg)/E_tmax).apply(lambda x : x.magnitude)
     z.index = pd.to_datetime(arg=z.index,format="%Y%j")
     z.to_pickle("00000%s_%s_%s_%s_%s_%s_daily.pkl" %(base,base,base,base,"1971","2000"))
+    z.to_csv("%s_O_daily.csv" %base)
     grouped = z.groupby(z.index.dayofyear)
     std = grouped.std()
     std.columns = ["std_"+c for c in std.columns]
     mean = grouped.mean()
     gdf = pd.concat([std,mean],axis=1)
- 
-    print (gdf)
     for col in [c for c in mean.columns if not "DATE" in c]:
        rol = mean[col].rolling(10)
        gdf["rolling_mean_" + col] = rol.mean()
        gdf["rolling_std_" + col] = rol.std()
-    print (gdf)
     gdf.to_pickle("00000%s_%s_%s_%s_%s_%s_AVG.pkl" %(base,base,base,base,"1971","2000"))
+    gdf.to_csv("%s_O_AVG.csv" %base)
 
     
     

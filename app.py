@@ -68,7 +68,9 @@ options_daily = options_hourly + [{'label':"Bowen daily", "value" :"bowen"},
                                   {'label':"R1", "value" :"R1"},
                                   {'label':"R2", "value" :"R2"},
                                   {'label':"Minimal daily Temperature", "value" :"Tmin"},
-                                  {'label':"Maximal daily Temperature", "value" :"Tmax"}]
+                                  {'label':"Maximal daily Temperature", "value" :"Tmax"},
+                                  {'label':"Vapor pressure (milibar)", "value" :"VAPO"},
+]
 
 
 dropdown_vrednosti = dcc.Dropdown(id="vrednosti_drop",
