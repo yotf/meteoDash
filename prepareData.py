@@ -9,18 +9,28 @@ from lcl_berkley import lcl as lclb
 klim_folder = "./source_CSV/Klimatologija/1971_2000"
 PIS_folder = "./source_CSV/PIS"
 output_klim = "./CSV/Klimatologija"
+other_folder = "./source_CSV/other/"
 csv_fnames = [d for d in os.listdir(PIS_folder) if d.startswith("0000") and d.endswith(".csv")]
 klim_fnames = [f for f in os.listdir(klim_folder) if f.endswith(".w6d")]
+other_fnames = [f for f in os.listdir(other_folder) ]
 output_klim = "./source_CSV/Klimatologija/1971_2000/CALC"
 
+def format_hourly(hourly_df):
+    hourly_df = hourly_df[['HC Air temperature [°C] avg','HC Relative humidity [%] avg',
+                           'Precipitation [mm] sum','Soil temperature [°C] avg']]
+    hourly_df.columns=["Tavg","RH","Precipitation","SAvg"]
+    return hourly_df
+
+
+
+    
+    
 def calculate_hourly(hourly_df):
     """Calculates values for hourly data.Takes raw csv period data, 
 changes names and calculates LCL and qsat and q and dewpoint"""
     kelvin_difference = 273.15
     pressure = 101325.0 *units.pascal
-    hourly_df = hourly_df[['HC Air temperature [°C] avg','HC Relative humidity [%] avg',
-       'Precipitation [mm] sum','Soil temperature [°C] avg']]
-    hourly_df.columns=["Tavg","RH","Precipitation","SAvg"]
+    
     hourly_df.RH = hourly_df.RH/100
     hourly_df = hourly_df[hourly_df.RH!=0] #izbacujemo sve kolone koje imaju u RH nulu
     hourly_df["dewpoint"] = hourly_df.apply(lambda x : thermo.dewpoint_rh(x.Tavg* units.celsius,x.RH),axis=1).apply(lambda x: x.magnitude)
@@ -29,15 +39,20 @@ changes names and calculates LCL and qsat and q and dewpoint"""
     lambda x: thermo.specific_humidity_from_mixing_ratio(x)).apply(lambda x: x.magnitude)
     hourly_df["lcl"] = hourly_df.apply(lambda x: lclb.lcl(pressure.magnitude,x.Tavg + kelvin_difference,x.RH),axis=1)
     return hourly_df
-    
-    
-def make_daily_avgs(hourly_df):
-    """ Takes hourly data, resmples it to daily data and calculates additonal values"""
+def convert_to_daily(hourly_df):
+    """converts to daily"""
     mindf = hourly_df.Tavg.resample('D').min()
     maxdf = hourly_df.Tavg.resample('D').max()
+    padavine_daily = hourly_df.Precipitation.resample('D').sum()
+    hourly_df.drop(columns=["Precipitation"],inplace=True)
     zz = pd.concat([mindf,maxdf],axis=1)
     zz.columns = ["Tmin","Tmax"]
-    df = pd.concat([hourly_df.resample('D').mean(),zz],axis=1)
+    df = pd.concat([hourly_df.resample('D').mean(),zz,padavine_daily],axis=1)
+    return df
+
+def make_daily_avgs(df):
+    """ Takes daily data, calculates"""
+
     Lv = 2265.705 *1000 #grami
     Cp = 1003 # J/kg
     df["tendt"] = Cp*df.Tavg.diff()/(24*3600)
@@ -75,7 +90,9 @@ for fname in csv_fnames:
     def make_fname(fname_base,pstart,pend,suffix):
         return "_".join(fname_base.split("_")[0:4]+ [str(pstart.date()),str(pend.date()),suffix])
     df = pd.read_csv(os.path.join(PIS_folder,fname),index_col="Date",converters={"Date":pd.to_datetime})
-    df = calculate_hourly(df) 
+    df = format_hourly(df)
+    df = calculate_hourly(df)
+    df = convert_to_daily(df)
     daily_df = make_daily_avgs(df)
     pstart,pend = daily_df.index[0],daily_df.index[-1]
     fname_base = fname.split(".")[0]
@@ -94,6 +111,26 @@ for fname in csv_fnames:
     df.to_pickle(fname_to_write)
     df.to_csv(fname_hourly_csv)
     daily_df.to_pickle(fname_to_write_daily)
+def format_other(df):
+    df = df.rename(columns={'HC Air temperature [°C] avg':"Tavg",'HC Air temperature [°C] min':"Tmin",'HC Air temperature [°C] max':"Tmax",'HC Relative humidity [%] avg':"RH",
+                           'Precipitation [mm] sum':"Precipitation"})
+    print (df)
+    return df
+
+for fname in other_fnames:
+    df = pd.read_csv(os.path.join(other_folder,fname),index_col="Date",converters={"Date":lambda x:pd.to_datetime(x,format="%d/%m/%Y")})
+    df = format_other(df)
+    df = calculate_hourly(df)
+    df_daily = make_daily_avgs(df)
+    smoothed_df= make_smoothed(df_daily)
+    df_daily.to_pickle("00000CWA_CWA_CWA_CWA_1998_2019_daily.pkl")
+    df_daily.to_csv("00000CWA_CWA_CWA_CWA_1998_2019_daily.csv")
+    smoothed_df.to_pickle("00000CWA_CWA_CWA_CWA_1998_2019_AVG.pkl")
+    smoothed_df.to_csv("00000CWA_CWA_CWA_CWA_1998_2019_AVG.csv")
+
+    
+
+
 
 for fname in klim_fnames:
     import numpy as np
@@ -124,7 +161,7 @@ for fname in klim_fnames:
     z["tendt"] = Cp*z.Tavg.diff()/(24*3600)
     z["tendq"] = Lv*z.q.diff()/(24*3600)
     z["bowen"] = (Cp*z.Tavg.diff())/(Lv*z.q.diff())
-    z.bowen[(z.bowen>5) | (z.bowen<-5)] = None
+    z.loc[(z.bowen>5) | (z.bowen<-5),"bowen"] = None
 #    z.bowen[(z.bowen>5) | (z.bowen<0)] = None
     E_tmin = z.Tmin.apply(lambda x: thermo.saturation_vapor_pressure(x * units.celsius))
     E_tmax = z.Tmax.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
