@@ -35,8 +35,7 @@ changes names and calculates LCL and qsat and q and dewpoint"""
     hourly_df = hourly_df[hourly_df.RH!=0] #izbacujemo sve kolone koje imaju u RH nulu
     hourly_df["dewpoint"] = hourly_df.apply(lambda x : thermo.dewpoint_rh(x.Tavg* units.celsius,x.RH),axis=1).apply(lambda x: x.magnitude)
     hourly_df["q"] = hourly_df.apply(lambda x: thermo.mixing_ratio_from_relative_humidity(x.RH,x.Tavg*units.celsius, pressure),axis=1).apply(lambda x: thermo.specific_humidity_from_mixing_ratio(x)).apply(lambda x: x.magnitude)
-    hourly_df["qsat"] = hourly_df.apply(lambda x : thermo.saturation_mixing_ratio(pressure,x.Tavg * units.celsius),axis=1).apply(
-    lambda x: thermo.specific_humidity_from_mixing_ratio(x)).apply(lambda x: x.magnitude)
+    hourly_df["qsat"] = hourly_df.apply(lambda x : thermo.saturation_mixing_ratio(pressure,x.Tavg * units.celsius),axis=1).apply(lambda x: thermo.specific_humidity_from_mixing_ratio(x)).apply(lambda x: x.magnitude)
     hourly_df["lcl"] = hourly_df.apply(lambda x: lclb.lcl(pressure.magnitude,x.Tavg + kelvin_difference,x.RH),axis=1)
     return hourly_df
 def convert_to_daily(hourly_df):
@@ -55,9 +54,15 @@ def make_daily_avgs(df):
 
     Lv = 2265.705 *1000 #grami
     Cp = 1003 # J/kg
+    pressure = 101325.0 *units.pascal
     df["tendt"] = Cp*df.Tavg.diff()/(24*3600)
     df["tendq"] = (Lv*df.q.diff()/(24*3600)) 
     df["bowen"] = (Cp*df.Tavg.diff())/(Lv*df.q.diff())
+    df["qsat"] =df.apply(
+        lambda x : thermo.saturation_mixing_ratio(pressure,x.Tmin * units.celsius),axis=1).apply(
+        lambda x: thermo.specific_humidity_from_mixing_ratio(x)).apply(
+            lambda x: x.magnitude
+        )
     df.loc[(df.bowen>20) | (df.bowen<-20),"bowen"]=None
     E_tmin = df.Tmin.apply(lambda x: thermo.saturation_vapor_pressure(x * units.celsius))
     E_tmax = df.Tmax.apply(lambda x: thermo.saturation_vapor_pressure(x* units.celsius))
