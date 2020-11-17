@@ -94,11 +94,11 @@ def make_smoothed(daily_df):
 for fname in csv_fnames:
     def make_fname(fname_base,pstart,pend,suffix):
         return "_".join(fname_base.split("_")[0:4]+ [str(pstart.date()),str(pend.date()),suffix])
-    df = pd.read_csv(os.path.join(PIS_folder,fname),index_col="Date",converters={"Date":pd.to_datetime})
-    df = format_hourly(df)
-    df = calculate_hourly(df)
-    df = convert_to_daily(df)
-    daily_df = make_daily_avgs(df)
+    df_hourly = pd.read_csv(os.path.join(PIS_folder,fname),index_col="Date",converters={"Date":pd.to_datetime})
+    df_hourly = format_hourly(df_hourly)
+    df_hourly = calculate_hourly(df_hourly)
+    daily_df = convert_to_daily(df_hourly)
+    daily_df = make_daily_avgs(daily_df)
     pstart,pend = daily_df.index[0],daily_df.index[-1]
     fname_base = fname.split(".")[0]
     fname_to_write = make_fname(fname_base,pstart,pend,"hourly.pkl")
@@ -113,8 +113,8 @@ for fname in csv_fnames:
     smoothed_df.to_pickle(fname_pkl_averaged)
     smoothed_df.to_csv(fname_csv_averaged)
     daily_df.to_csv(fname_csv_daily)
-    df.to_pickle(fname_to_write)
-    df.to_csv(fname_hourly_csv)
+    df_hourly.to_pickle(fname_to_write)
+    df_hourly.to_csv(fname_hourly_csv)
     daily_df.to_pickle(fname_to_write_daily)
 def format_other(df):
     df = df.rename(columns={'HC Air temperature [°C] avg':"Tavg",'HC Air temperature [°C] min':"Tmin",'HC Air temperature [°C] max':"Tmax",'HC Relative humidity [%] avg':"RH",
